@@ -34,18 +34,34 @@ $lcRespuesta = '';
 switch ($lcMetodoSolicitud) {
     case 'GET':
         switch ($lcMetodo) {
-            case 'buscar':
-                $lcRespuesta = buscar($lcParametro, null);
+            case 'codigo-existe':
+                $lcRespuesta = obtener_dao()->codigo_existe((int) $lcParametro);
                 break;
-            case 'buscar-por-codigo':
-                if (isset($lcParametro)) {
-                    $lcRespuesta = buscar_por_codigo((int) $lcParametro);
-                }
+            case 'nombre-existe':
+                $lcRespuesta = obtener_dao()->nombre_existe($lcParametro);
                 break;
-            case 'buscar-por-nombre':
-                if (isset($lcParametro)) {
-                    $lcRespuesta = buscar_por_nombre($lcParametro);
-                }
+            case 'esta-vigente':
+                $lcRespuesta = obtener_dao()->esta_vigente((int) $lcParametro);
+                break;
+            case 'esta-relacionado':
+                $lcRespuesta =
+                    obtener_dao()->esta_relacionado((int) $lcParametro);
+                break;
+            case 'contar':
+                $lcRespuesta = obtener_dao()->contar($lcParametro);
+                break;
+            case 'nuevo-codigo':
+                $lcRespuesta = obtener_dao()->nuevo_codigo();
+                break;
+            case 'obtener-por-codigo':
+                $lcRespuesta =
+                    obtener_dao()->obtener_por_codigo((int) $lcParametro);
+                break;
+            case 'obtener-por-nombre':
+                $lcRespuesta = obtener_dao()->obtener_por_nombre($lcParametro);
+                break;
+            case 'obtener-todos':
+                $lcRespuesta = obtener_dao()->obtener_todos($lcParametro, null);
                 break;
         }
         break;
@@ -82,9 +98,7 @@ echo $lcRespuesta;
 *                             FUNCTIONS SECTION                              *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/**
-* Realiza las valicaciones iniciales.
-*/
+#-------------------------------------------------------------------------------
 function validar($tcModulo, $tcMetodo) {
     if (!isset($tcModulo)
         or gettype($tcModulo) !== 'string'
@@ -97,12 +111,18 @@ function validar($tcModulo, $tcMetodo) {
     if (!isset($tcMetodo)
         or gettype($tcMetodo) !== 'string'
         or empty($tcMetodo)
-        or !($tcMetodo === 'agregar'
-        or $tcMetodo === 'borrar'
-        or $tcMetodo === 'buscar'
-        or $tcMetodo === 'buscar-por-codigo'
-        or $tcMetodo === 'buscar-por-nombre'
-        or $tcMetodo === 'modificar')
+        or !($tcMetodo === 'codigo-existe'
+        or $tcMetodo === 'nombre-existe'
+        or $tcMetodo === 'esta-vigente'
+        or $tcMetodo === 'esta-relacionado'
+        or $tcMetodo === 'contar'
+        or $tcMetodo === 'nuevo-codigo'
+        or $tcMetodo === 'obtener-por-codigo'
+        or $tcMetodo === 'obtener-por-nombre'
+        or $tcMetodo === 'obtener-todos'
+        or $tcMetodo === 'agregar'
+        or $tcMetodo === 'modificar'
+        or $tcMetodo === 'borrar')
     ) {
         return false;
     }
@@ -110,48 +130,10 @@ function validar($tcModulo, $tcMetodo) {
     return true;
 }
 
-/**
-* Devuelve el DAO (Data Access Object).
-*/
+#-------------------------------------------------------------------------------
 function obtener_dao() {
     $loFabricaDao = fabrica_dao::obtener_fabrica_dao(BD_COM);
     return $loFabricaDao->obtener_dao_marcas1();
-}
-
-/**
-* Realiza una búsqueda por código.
-*
-* @param integer $tnCodigo
-* Especifica el código a buscar.
-*
-* @return string
-*/
-function buscar_por_codigo($tnCodigo) {
-    $loDao = obtener_dao();
-    return $loDao->obtener_por_codigo($tnCodigo);
-}
-
-/**
-* Realiza una búsqueda por nombre.
-*
-* @param string $tcNombre
-* Especifica el nombre a buscar.
-*
-* @return string
-*/
-function buscar_por_nombre($tcNombre) {
-    $loDao = obtener_dao();
-    return $loDao->obtener_por_nombre($tcNombre);
-}
-
-/**
-* Recupera todos los registros.
-*
-* @return string
-*/
-function buscar($tcCondicionFiltro, $tcOrden) {
-    $loDao = obtener_dao();
-    return $loDao->obtener_todos($tcCondicionFiltro, $tcOrden);
 }
 
 /**

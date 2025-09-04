@@ -50,7 +50,8 @@ abstract class dao_com implements dao {
             '</datos>';
 
         $lcXml = str_replace('{{codigo}}', $tnCodigo, $lcXml);
-        $lcXml = str_replace('{{existe}}', $llExiste, $lcXml);
+        $lcXml = str_replace('{{existe}}', $llExiste ? 'true' : 'false',
+            $lcXml);
 
         return $lcXml;
     }
@@ -80,7 +81,8 @@ abstract class dao_com implements dao {
             '</datos>';
 
         $lcXml = str_replace('{{nombre}}', $tcNombre, $lcXml);
-        $lcXml = str_replace('{{existe}}', $llExiste, $lcXml);
+        $lcXml = str_replace('{{existe}}', $llExiste ? 'true' : 'false',
+            $lcXml);
         $lcXml = str_replace('&', '&amp;', $lcXml);
 
         return $lcXml;
@@ -111,7 +113,103 @@ abstract class dao_com implements dao {
             '</datos>';
 
         $lcXml = str_replace('{{codigo}}', $tnCodigo, $lcXml);
-        $lcXml = str_replace('{{vigente}}', $llVigente, $lcXml);
+        $lcXml = str_replace('{{vigente}}', $llVigente ? 'true' : 'false',
+            $lcXml);
+
+        return $lcXml;
+    }
+
+    #---------------------------------------------------------------------------
+    public function esta_relacionado($tnCodigo) {
+        $llRelacionado = true;
+
+        try {
+            $this->conectar();
+
+            if (isset($this->oConexion)) {
+                $llRelacionado = $this->oConexion->esta_relacionado($tnCodigo);
+            }
+        } catch (Exception $ex) {
+            print 'ERROR: ' . $ex->getMessage() . '<br>';
+        }
+
+        $this->desconectar();
+
+        $lcXml = '<?xml version="1.0" encoding="Windows-1252"?>' .
+            '<datos>' .
+                '<registro>' .
+                    '<codigo>{{codigo}}</codigo>' .
+                    '<relacionado>{{relacionado}}</relacionado>' .
+                '</registro>' .
+            '</datos>';
+
+        $lcXml = str_replace('{{codigo}}', $tnCodigo, $lcXml);
+        $lcXml = str_replace('{{relacionado}}',
+            $llRelacionado ? 'true' : 'false', $lcXml);
+
+        return $lcXml;
+    }
+
+    #---------------------------------------------------------------------------
+    public function contar($tcCondicionFiltro) {
+        $lnNumReg = 0;
+
+        try {
+            $this->conectar();
+
+            if (isset($this->oConexion)) {
+                $lnNumReg = $this->oConexion->contar($tcCondicionFiltro);
+            }
+        } catch (Exception $ex) {
+            print 'ERROR: ' . $ex->getMessage() . '<br>';
+        }
+
+        $this->desconectar();
+
+        $lcXml = '<?xml version="1.0" encoding="Windows-1252"?>' .
+            '<datos>' .
+                '<registro>' .
+                    '<modulo>{{modulo}}</modulo>' .
+                    '<numero_registros>' .
+                        '{{numero_registros}}' .
+                    '</numero_registros>' .
+                '</registro>' .
+            '</datos>';
+
+        $lcXml = str_replace('{{modulo}}',
+            substr($this->cCom, strpos($this->cCom, '.') + 5), $lcXml);
+        $lcXml = str_replace('{{numero_registros}}', $lnNumReg, $lcXml);
+
+        return $lcXml;
+    }
+
+    #---------------------------------------------------------------------------
+    public function nuevo_codigo() {
+        $lnNuevoCodigo = 0;
+
+        try {
+            $this->conectar();
+
+            if (isset($this->oConexion)) {
+                $lnNuevoCodigo = $this->oConexion->nuevo_codigo();
+            }
+        } catch (Exception $ex) {
+            print 'ERROR: ' . $ex->getMessage() . '<br>';
+        }
+
+        $this->desconectar();
+
+        $lcXml = '<?xml version="1.0" encoding="Windows-1252"?>' .
+            '<datos>' .
+                '<registro>' .
+                    '<modulo>{{modulo}}</modulo>' .
+                    '<nuevo_codigo>{{nuevo_codigo}}</nuevo_codigo>' .
+                '</registro>' .
+            '</datos>';
+
+        $lcXml = str_replace('{{modulo}}',
+            substr($this->cCom, strpos($this->cCom, '.') + 5), $lcXml);
+        $lcXml = str_replace('{{nuevo_codigo}}', $lnNuevoCodigo, $lcXml);
 
         return $lcXml;
     }
@@ -226,7 +324,8 @@ abstract class dao_com implements dao {
             '</datos>';
 
         $lcXml = str_replace('{{codigo}}', $toDto->obtener_codigo(), $lcXml);
-        $lcXml = str_replace('{{agregado}}', $llAgregado, $lcXml);
+        $lcXml = str_replace('{{agregado}}', $llAgregado ? 'true' : 'false',
+            $lcXml);
         $lcXml = str_replace('{{mensaje}}', $lcMensaje, $lcXml);
 
         return $lcXml;
@@ -263,7 +362,8 @@ abstract class dao_com implements dao {
             '</datos>';
 
         $lcXml = str_replace('{{codigo}}', $toDto->obtener_codigo(), $lcXml);
-        $lcXml = str_replace('{{modificado}}', $llModificado, $lcXml);
+        $lcXml = str_replace('{{modificado}}', $llModificado ? 'true' : 'false',
+            $lcXml);
         $lcXml = str_replace('{{mensaje}}', $lcMensaje, $lcXml);
 
         return $lcXml;
@@ -300,7 +400,8 @@ abstract class dao_com implements dao {
             '</datos>';
 
         $lcXml = str_replace('{{codigo}}', $tnCodigo, $lcXml);
-        $lcXml = str_replace('{{borrado}}', $llBorrado, $lcXml);
+        $lcXml = str_replace('{{borrado}}', $llBorrado ? 'true' : 'false',
+            $lcXml);
         $lcXml = str_replace('{{mensaje}}', $lcMensaje, $lcXml);
 
         return $lcXml;
@@ -347,7 +448,8 @@ abstract class dao_com implements dao {
 
         $lcXml = str_replace('{{codigo}}', $toDto->obtener_codigo(), $lcXml);
         $lcXml = str_replace('{{nombre}}', $toDto->obtener_nombre(), $lcXml);
-        $lcXml = str_replace('{{vigente}}', $toDto->esta_vigente(), $lcXml);
+        $lcXml = str_replace('{{vigente}}',
+            $toDto->esta_vigente() ? 'true' : 'false', $lcXml);
         $lcXml = str_replace('&', '&amp;', $lcXml);
 
         return $lcXml;
