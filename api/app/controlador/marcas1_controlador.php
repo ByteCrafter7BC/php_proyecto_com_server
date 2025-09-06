@@ -20,6 +20,7 @@
 */
 
 include_once 'app\biblioteca\fabrica_dao.inc.php';
+include_once 'app\prog\funciones.inc.php';
 
 header('Content-Type: application/xml; charset=Windows-1252');
 
@@ -30,15 +31,16 @@ if (!isset($lcModulo) or !isset($lcMetodo) or !validar($lcModulo, $lcMetodo)) {
 
 $lcMetodoSolicitud = $_SERVER['REQUEST_METHOD'];
 $lcRespuesta = '';
+$lnCodRespHttp = 200;    // 200 OK
 
 switch ($lcMetodoSolicitud) {
     case 'GET':
         switch ($lcMetodo) {
-            case 'codigo-existe':
-                $lcRespuesta = obtener_dao()->codigo_existe((int) $lcParametro);
+            case 'existe-codigo':
+                $lcRespuesta = obtener_dao()->existe_codigo((int) $lcParametro);
                 break;
-            case 'nombre-existe':
-                $lcRespuesta = obtener_dao()->nombre_existe($lcParametro);
+            case 'existe-nombre':
+                $lcRespuesta = obtener_dao()->existe_nombre($lcParametro);
                 break;
             case 'esta-vigente':
                 $lcRespuesta = obtener_dao()->esta_vigente((int) $lcParametro);
@@ -50,8 +52,8 @@ switch ($lcMetodoSolicitud) {
             case 'contar':
                 $lcRespuesta = obtener_dao()->contar($lcParametro);
                 break;
-            case 'nuevo-codigo':
-                $lcRespuesta = obtener_dao()->nuevo_codigo();
+            case 'obtener-nuevo-codigo':
+                $lcRespuesta = obtener_dao()->obtener_nuevo_codigo();
                 break;
             case 'obtener-por-codigo':
                 $lcRespuesta =
@@ -67,7 +69,15 @@ switch ($lcMetodoSolicitud) {
         break;
     case 'POST':
         if ($lcMetodo === 'agregar') {
-            # code...
+            $lcRespuesta = agregar(file_get_contents('php://input'));
+
+            if (strpos($lcRespuesta, '<agregado>true</agregado>')) {
+                $lnCodRespHttp = 201;    // 201 Created
+            } elseif (strpos($lcRespuesta, '<agregado>false</agregado>')) {
+                $lnCodRespHttp = 409;    // 409 Conflict
+            } elseif (strpos($lcRespuesta, '<error>')) {
+                $lnCodRespHttp = 400;    // 400 Bad Request
+            }
         }
         break;
     case 'PUT':
@@ -81,24 +91,21 @@ switch ($lcMetodoSolicitud) {
         }
         break;
     default:
-        header($_SERVER['SERVER_PROTOCOL'] . ' 405 Method Not Allowed', true,
-            405);
+        $lnCodRespHttp = 405;    // 405 Method Not Allowed
         break;
 }
 
-if ($lcRespuesta !== '') {
-    header($_SERVER['SERVER_PROTOCOL'] . ' 200 OK', true, 200);
-} else {
-    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found', true, 404);
+if ($lcRespuesta === '' and $lnCodRespHttp === 200) {
+    $lnCodRespHttp = 404;    // 404 Not Found
 }
 
+header($_SERVER['SERVER_PROTOCOL'] .
+    obtener_nombre_estado_respuesta_http($lnCodRespHttp), true, $lnCodRespHttp);
 echo $lcRespuesta;
 
 /** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
 *                             FUNCTIONS SECTION                              *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-#-------------------------------------------------------------------------------
 function validar($tcModulo, $tcMetodo) {
     if (!isset($tcModulo)
         or gettype($tcModulo) !== 'string'
@@ -111,12 +118,12 @@ function validar($tcModulo, $tcMetodo) {
     if (!isset($tcMetodo)
         or gettype($tcMetodo) !== 'string'
         or empty($tcMetodo)
-        or !($tcMetodo === 'codigo-existe'
-        or $tcMetodo === 'nombre-existe'
+        or !($tcMetodo === 'existe-codigo'
+        or $tcMetodo === 'existe-nombre'
         or $tcMetodo === 'esta-vigente'
         or $tcMetodo === 'esta-relacionado'
         or $tcMetodo === 'contar'
-        or $tcMetodo === 'nuevo-codigo'
+        or $tcMetodo === 'obtener-nuevo-codigo'
         or $tcMetodo === 'obtener-por-codigo'
         or $tcMetodo === 'obtener-por-nombre'
         or $tcMetodo === 'obtener-todos'
@@ -136,28 +143,45 @@ function obtener_dao() {
     return $loFabricaDao->obtener_dao_marcas1();
 }
 
-/**
-* Inserts a new record.
-*
-* @param string $tcModel
-* JSON string representing the model data to be inserted.
-*
-* @return string
-*/
-function insert($tcModel) {
-    $loDao = get_dao();
-    return $loDao->insert($tcModel);
-}
+#-------------------------------------------------------------------------------
+function agregar($tcXml) {
+    $lcRespuesta = '';
 
-/**
-* Deletes an existing record.
-*
-* @param integer $tnId
-* Specifies the id to be deleted.
-*
-* @return string
-*/
-function delete($tnId) {
-    $loDao = get_dao();
-    return $loDao->delete('{ "id": ' . $tnId . ' }');
+    if (!$tcXml) {
+        $lcRespuesta = '<?xml version="1.0" encoding="Windows-1252"?>' .
+            '<datos><error><mensaje>No se recibió ningún XML.</mensaje>' .
+            '</error></datos>';
+    }
+
+    if (!$lcRespuesta and !es_cadena_xml($tcXml)) {
+        $lcRespuesta = '<?xml version="1.0" encoding="Windows-1252"?>' .
+            '<datos><error><mensaje>Error al procesar el XML.</mensaje>' .
+            '</error></datos>';
+    }
+
+    if (!$lcRespuesta) {
+        try {
+            $loXml = new SimpleXMLElement($tcXml);
+
+            $codigo = (int) $loXml->registro->codigo;
+            $nombre = (string) $loXml->registro->nombre;
+            $vigente = (bool) $loXml->registro->vigente;
+
+            $loDto = obtener_dao()->obtener_dto();
+
+            if (is_object($loDto)) {
+                $loDto->establecer_codigo($codigo);
+                $loDto->establecer_nombre($nombre);
+                $loDto->establecer_vigente($vigente);
+
+                $lcRespuesta = obtener_dao()->agregar($loDto);
+            }
+        } catch (Exception $ex) {
+            $lcRespuesta = '<?xml version="1.0" encoding="Windows-1252"?>' .
+                '<datos><error><mensaje>Error al procesar el XML: ' .
+                $ex->getMessage() . '</mensaje></error></datos>';
+        }
+    }
+
+    return $lcRespuesta;
 }

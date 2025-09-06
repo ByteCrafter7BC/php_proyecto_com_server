@@ -26,14 +26,14 @@ abstract class dao_com implements dao {
     protected $oConexion;
 
     #---------------------------------------------------------------------------
-    public function codigo_existe($tnCodigo) {
+    public function existe_codigo($tnCodigo) {
         $llExiste = true;
 
         try {
             $this->conectar();
 
             if (isset($this->oConexion)) {
-                $llExiste = $this->oConexion->codigo_existe($tnCodigo);
+                $llExiste = $this->oConexion->existe_codigo($tnCodigo);
             }
         } catch (Exception $ex) {
             print 'ERROR: ' . $ex->getMessage() . '<br>';
@@ -57,14 +57,14 @@ abstract class dao_com implements dao {
     }
 
     #---------------------------------------------------------------------------
-    public function nombre_existe($tcNombre) {
+    public function existe_nombre($tcNombre) {
         $llExiste = true;
 
         try {
             $this->conectar();
 
             if (isset($this->oConexion)) {
-                $llExiste = $this->oConexion->nombre_existe($tcNombre);
+                $llExiste = $this->oConexion->existe_nombre($tcNombre);
             }
         } catch (Exception $ex) {
             print 'ERROR: ' . $ex->getMessage() . '<br>';
@@ -184,14 +184,14 @@ abstract class dao_com implements dao {
     }
 
     #---------------------------------------------------------------------------
-    public function nuevo_codigo() {
+    public function obtener_nuevo_codigo() {
         $lnNuevoCodigo = 0;
 
         try {
             $this->conectar();
 
             if (isset($this->oConexion)) {
-                $lnNuevoCodigo = $this->oConexion->nuevo_codigo();
+                $lnNuevoCodigo = $this->oConexion->obtener_nuevo_codigo();
             }
         } catch (Exception $ex) {
             print 'ERROR: ' . $ex->getMessage() . '<br>';

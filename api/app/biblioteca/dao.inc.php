@@ -20,12 +20,16 @@
 */
 
 interface dao {
-    public function codigo_existe($tnCodigo);
-    public function nombre_existe($tcNombre);
+    public function existe_codigo($tnCodigo);
+    public function existe_nombre($tcNombre);
     public function esta_vigente($tnCodigo);
+    public function esta_relacionado($tnCodigo);
+    public function contar($tcCondicionFiltro);
+    public function obtener_nuevo_codigo();
     public function obtener_por_codigo($tnCodigo);
     public function obtener_por_nombre($tcNombre);
     public function obtener_todos($tcCondicionFiltro, $tcOrden);
+    public function obtener_dto();
     public function agregar($toDto);
     public function modificar($toDto);
     public function borrar($tnCodigo);

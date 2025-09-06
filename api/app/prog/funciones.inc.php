@@ -23,3 +23,56 @@ function es_cadena_json($tcJson) {
     json_decode($tcJson);
     return json_last_error() === JSON_ERROR_NONE;
 }
+
+#-------------------------------------------------------------------------------
+function es_cadena_xml($tcXml) {
+    $llValido = false;
+
+    libxml_use_internal_errors(true); // Suprime los errores.
+
+    if (simplexml_load_string($tcXml)) {
+        $llValido = true;
+    }
+
+    libxml_clear_errors(); // Limpia los errores.
+
+    return $llValido;
+}
+
+#-------------------------------------------------------------------------------
+function obtener_nombre_estado_respuesta_http($tnCodRespHttp) {
+    if (gettype($tnCodRespHttp) !== 'integer') {
+        return '';
+    }
+
+    $lcCodRespHttp = '';
+
+    switch ($tnCodRespHttp) {
+        case 200:
+            $lcCodRespHttp = ' 200 OK';
+            break;
+        case 201:
+            $lcCodRespHttp = ' 201 Created';
+            break;
+        case 202:
+            $lcCodRespHttp = ' 202 Accepted';
+            break;
+        case 400:
+            $lcCodRespHttp = ' 400 Bad Request';
+            break;
+        case 404:
+            $lcCodRespHttp = ' 404 Not Found';
+            break;
+        case 405:
+            $lcCodRespHttp = ' 405 Method Not Allowed';
+            break;
+        case 409:
+            $lcCodRespHttp = ' 409 Conflict';
+            break;
+        case 418:
+            $lcCodRespHttp = " 418 I'm a teapot";
+            break;
+    }
+
+    return $lcCodRespHttp;
+}
