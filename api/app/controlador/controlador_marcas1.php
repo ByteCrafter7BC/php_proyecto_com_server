@@ -1,6 +1,6 @@
 <?php
 /**
-* constantes.inc.php
+* controlador_marcas1.php
 *
 * Derechos de autor (C) 2000-2025 ByteCrafter7BC <bytecrafter7bc@gmail.com>
 *
@@ -19,8 +19,8 @@
 * <https://www.gnu.org/licenses/>.
 */
 
-define('BD_COM', 1);
-define('BD_FIREBIRD', 2);
-define('BD_MYSQL', 3);
-define('BD_POSTGRES', 4);
-define('ENCABEZADO_XML', '<?xml version="1.0" encoding="Windows-1252"?>')
+include_once 'app\biblioteca\controlador_base.inc.php';
+
+// Suponiendo que $lcModulo, $lcMetodo y $lcParametro vienen de algún lugar.
+$controlador = new controlador_base($lcModulo, $lcMetodo, $lcParametro);
+$controlador->ejecutar();

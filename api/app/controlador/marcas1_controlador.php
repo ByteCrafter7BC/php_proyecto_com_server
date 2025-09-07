@@ -24,70 +24,45 @@ include_once 'app\prog\funciones.inc.php';
 
 header('Content-Type: application/xml; charset=Windows-1252');
 
-if (!isset($lcModulo) or !isset($lcMetodo) or !validar($lcModulo, $lcMetodo)) {
-    header($_SERVER['SERVER_PROTOCOL'] . " 418 I'm a teapot", true, 418);
-    die();
+if (empty($lcModulo) || empty($lcMetodo) || !validar($lcModulo, $lcMetodo)) {
+    enviar_respuesta_http(418, '');
+    exit;
 }
 
-$lcMetodoSolicitud = $_SERVER['REQUEST_METHOD'];
+$lcMetodoHttp = $_SERVER['REQUEST_METHOD'];
+
+if (!metodo_permitido($lcMetodoHttp, $lcMetodo)) {
+    enviar_respuesta_http(405, '');    // 405 Method Not Allowed
+    exit;
+}
+
 $lcRespuesta = '';
 $lnCodRespHttp = 200;    // 200 OK
+$loDao = obtener_dao();
 
-switch ($lcMetodoSolicitud) {
+switch ($lcMetodoHttp) {
     case 'GET':
-        switch ($lcMetodo) {
-            case 'existe-codigo':
-                $lcRespuesta = obtener_dao()->existe_codigo((int) $lcParametro);
-                break;
-            case 'existe-nombre':
-                $lcRespuesta = obtener_dao()->existe_nombre($lcParametro);
-                break;
-            case 'esta-vigente':
-                $lcRespuesta = obtener_dao()->esta_vigente((int) $lcParametro);
-                break;
-            case 'esta-relacionado':
-                $lcRespuesta =
-                    obtener_dao()->esta_relacionado((int) $lcParametro);
-                break;
-            case 'contar':
-                $lcRespuesta = obtener_dao()->contar($lcParametro);
-                break;
-            case 'obtener-nuevo-codigo':
-                $lcRespuesta = obtener_dao()->obtener_nuevo_codigo();
-                break;
-            case 'obtener-por-codigo':
-                $lcRespuesta =
-                    obtener_dao()->obtener_por_codigo((int) $lcParametro);
-                break;
-            case 'obtener-por-nombre':
-                $lcRespuesta = obtener_dao()->obtener_por_nombre($lcParametro);
-                break;
-            case 'obtener-todos':
-                $lcRespuesta = obtener_dao()->obtener_todos($lcParametro, null);
-                break;
-        }
+        $lcRespuesta = procesar_get($lcMetodo, $lcParametro, $loDao);
         break;
     case 'POST':
         if ($lcMetodo === 'agregar') {
-            $lcRespuesta = agregar(file_get_contents('php://input'));
-
-            if (strpos($lcRespuesta, '<agregado>true</agregado>')) {
-                $lnCodRespHttp = 201;    // 201 Created
-            } elseif (strpos($lcRespuesta, '<agregado>false</agregado>')) {
-                $lnCodRespHttp = 409;    // 409 Conflict
-            } elseif (strpos($lcRespuesta, '<error>')) {
-                $lnCodRespHttp = 400;    // 400 Bad Request
-            }
+            $laResultado = agregar(file_get_contents('php://input'), $loDao);
+            $lcRespuesta = $laResultado['contenido'];
+            $lnCodRespHttp = $laResultado['codigo'];
         }
         break;
     case 'PUT':
         if ($lcMetodo === 'modificar') {
-            # code...
+            $laResultado = modificar(file_get_contents('php://input'), $loDao);
+            $lcRespuesta = $laResultado['contenido'];
+            $lnCodRespHttp = $laResultado['codigo'];
         }
         break;
     case 'DELETE':
         if ($lcMetodo === 'borrar') {
-            # code...
+            $laResultado = borrar(file_get_contents('php://input'), $loDao);
+            $lcRespuesta = $laResultado['contenido'];
+            $lnCodRespHttp = $laResultado['codigo'];
         }
         break;
     default:
@@ -95,46 +70,32 @@ switch ($lcMetodoSolicitud) {
         break;
 }
 
-if ($lcRespuesta === '' and $lnCodRespHttp === 200) {
+if ($lcRespuesta === '' && $lnCodRespHttp === 200) {
     $lnCodRespHttp = 404;    // 404 Not Found
 }
 
-header($_SERVER['SERVER_PROTOCOL'] .
-    obtener_nombre_estado_respuesta_http($lnCodRespHttp), true, $lnCodRespHttp);
-echo $lcRespuesta;
+enviar_respuesta_http($lnCodRespHttp, $lcRespuesta);
 
 /** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
 *                             FUNCTIONS SECTION                              *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+#-------------------------------------------------------------------------------
 function validar($tcModulo, $tcMetodo) {
-    if (!isset($tcModulo)
-        or gettype($tcModulo) !== 'string'
-        or empty($tcModulo)
-        or $tcModulo !== 'marcas1'
-    ) {
+    // Validar módulo.
+    if (!is_string($tcModulo) || $tcModulo !== 'marcas1') {
         return false;
     }
 
-    if (!isset($tcMetodo)
-        or gettype($tcMetodo) !== 'string'
-        or empty($tcMetodo)
-        or !($tcMetodo === 'existe-codigo'
-        or $tcMetodo === 'existe-nombre'
-        or $tcMetodo === 'esta-vigente'
-        or $tcMetodo === 'esta-relacionado'
-        or $tcMetodo === 'contar'
-        or $tcMetodo === 'obtener-nuevo-codigo'
-        or $tcMetodo === 'obtener-por-codigo'
-        or $tcMetodo === 'obtener-por-nombre'
-        or $tcMetodo === 'obtener-todos'
-        or $tcMetodo === 'agregar'
-        or $tcMetodo === 'modificar'
-        or $tcMetodo === 'borrar')
-    ) {
-        return false;
-    }
+    // Lista de métodos válidos.
+    $laMetodosValidos = array(
+        'existe-codigo', 'existe-nombre', 'esta-vigente', 'esta-relacionado',
+        'contar', 'obtener-nuevo-codigo', 'obtener-por-codigo',
+        'obtener-por-nombre', 'obtener-todos', 'agregar', 'modificar', 'borrar'
+    );
 
-    return true;
+    // Validar método.
+    return is_string($tcMetodo) && in_array($tcMetodo, $laMetodosValidos, true);
 }
 
 #-------------------------------------------------------------------------------
@@ -144,44 +105,189 @@ function obtener_dao() {
 }
 
 #-------------------------------------------------------------------------------
-function agregar($tcXml) {
-    $lcRespuesta = '';
-
-    if (!$tcXml) {
-        $lcRespuesta = '<?xml version="1.0" encoding="Windows-1252"?>' .
-            '<datos><error><mensaje>No se recibió ningún XML.</mensaje>' .
-            '</error></datos>';
+function agregar($tcXml, $toDao) {
+    if (empty($tcXml) || !es_cadena_xml($tcXml)) {
+        return generar_error_xml('XML inválido o no recibido.');
     }
 
-    if (!$lcRespuesta and !es_cadena_xml($tcXml)) {
-        $lcRespuesta = '<?xml version="1.0" encoding="Windows-1252"?>' .
-            '<datos><error><mensaje>Error al procesar el XML.</mensaje>' .
-            '</error></datos>';
-    }
+    try {
+        $loXml = new SimpleXMLElement($tcXml);
 
-    if (!$lcRespuesta) {
-        try {
-            $loXml = new SimpleXMLElement($tcXml);
-
-            $codigo = (int) $loXml->registro->codigo;
-            $nombre = (string) $loXml->registro->nombre;
-            $vigente = (bool) $loXml->registro->vigente;
-
-            $loDto = obtener_dao()->obtener_dto();
-
-            if (is_object($loDto)) {
-                $loDto->establecer_codigo($codigo);
-                $loDto->establecer_nombre($nombre);
-                $loDto->establecer_vigente($vigente);
-
-                $lcRespuesta = obtener_dao()->agregar($loDto);
-            }
-        } catch (Exception $ex) {
-            $lcRespuesta = '<?xml version="1.0" encoding="Windows-1252"?>' .
-                '<datos><error><mensaje>Error al procesar el XML: ' .
-                $ex->getMessage() . '</mensaje></error></datos>';
+        if (!isset($loXml->registro)) {
+            return generar_error_xml('El nodo <registro> no está presente ' .
+                'en el XML.');
         }
+
+        $loRegistro = $loXml->registro;
+        $loDto = $toDao->obtener_dto();
+
+        if (!($loDto instanceof stdClass)) {
+            return generar_error_xml('Error al obtener el objeto DTO.');
+        }
+
+        // Validaciones defensivas para evitar errores por nodos vacíos.
+        $codigo = obtener_valor_xml($loRegistro->codigo, 'int', 0);
+        $nombre = obtener_valor_xml($loRegistro->nombre);
+        $vigente = obtener_valor_xml($loRegistro->vigente, 'bool', false);
+
+        $loDto->establecer_codigo($codigo);
+        $loDto->establecer_nombre($nombre);
+        $loDto->establecer_vigente($vigente);
+
+        $lcXml = $toDao->agregar($loDto);
+
+        if (strpos($lcXml, '<agregado>true</agregado>')) {
+            return array('codigo' => 201, 'contenido' => $lcXml);
+        } elseif (strpos($lcXml, '<agregado>false</agregado>')) {
+            return array('codigo' => 409, 'contenido' => $lcXml);
+        } else {
+            return array('codigo' => 400, 'contenido' => $lcXml);
+        }
+    } catch (Exception $ex) {
+        return generar_error_xml('Error al procesar el XML: ' .
+            htmlspecialchars($ex->getMessage(), ENT_XML1, 'Windows-1252'));
+    }
+}
+
+#-------------------------------------------------------------------------------
+function modificar($tcXml, $toDao) {
+    if (empty($tcXml) || !es_cadena_xml($tcXml)) {
+        return generar_error_xml('XML inválido o no recibido.');
     }
 
-    return $lcRespuesta;
+    try {
+        $loXml = new SimpleXMLElement($tcXml);
+
+        if (!isset($loXml->registro)) {
+            return generar_error_xml('El nodo <registro> no está presente ' .
+                'en el XML.');
+        }
+
+        $loRegistro = $loXml->registro;
+        $loDto = $toDao->obtener_dto();
+
+        if (!($loDto instanceof stdClass)) {
+            return generar_error_xml('Error al obtener el objeto DTO.');
+        }
+
+        // Validaciones defensivas para evitar errores por nodos vacíos.
+        $codigo = obtener_valor_xml($loRegistro->codigo, 'int', 0);
+        $nombre = obtener_valor_xml($loRegistro->nombre);
+        $vigente = obtener_valor_xml($loRegistro->vigente, 'bool', false);
+
+        $loDto->establecer_codigo($codigo);
+        $loDto->establecer_nombre($nombre);
+        $loDto->establecer_vigente($vigente);
+
+        $lcXml = $toDao->modificar($loDto);
+
+        if (strpos($lcXml, '<modificado>true</modificado>')) {
+            return array('codigo' => 201, 'contenido' => $lcXml);
+        } elseif (strpos($lcXml, '<modificado>false</modificado>')) {
+            return array('codigo' => 409, 'contenido' => $lcXml);
+        } else {
+            return array('codigo' => 400, 'contenido' => $lcXml);
+        }
+    } catch (Exception $ex) {
+        return generar_error_xml('Error al procesar el XML: ' .
+            htmlspecialchars($ex->getMessage(), ENT_XML1, 'Windows-1252'));
+    }
+}
+
+#-------------------------------------------------------------------------------
+function borrar($tcXml, $toDao) {
+    if (empty($tcXml) || !es_cadena_xml($tcXml)) {
+        return generar_error_xml('XML inválido o no recibido.');
+    }
+
+    try {
+        $loXml = new SimpleXMLElement($tcXml);
+
+        if (!isset($loXml->registro)) {
+            return generar_error_xml('El nodo <registro> no está presente ' .
+                'en el XML.');
+        }
+
+        $lcXml = $toDao->borrar(
+            obtener_valor_xml($loXml->registro->codigo, 'int', 0));
+
+        if (strpos($lcXml, '<borrado>true</borrado>')) {
+            return array('codigo' => 201, 'contenido' => $lcXml);
+        } elseif (strpos($lcXml, '<borrado>false</borrado>')) {
+            return array('codigo' => 409, 'contenido' => $lcXml);
+        } else {
+            return array('codigo' => 400, 'contenido' => $lcXml);
+        }
+    } catch (Exception $ex) {
+        return generar_error_xml('Error al procesar el XML: ' .
+            htmlspecialchars($ex->getMessage(), ENT_XML1, 'Windows-1252'));
+    }
+}
+
+#-------------------------------------------------------------------------------
+function procesar_get($tcMetodo, $tcParametro, $toDao) {
+    switch ($tcMetodo) {
+        case 'existe-codigo':
+            return $toDao->existe_codigo((int) $tcParametro);
+        case 'existe-nombre':
+            return $toDao->existe_nombre($tcParametro);
+        case 'esta-vigente':
+            return $toDao->esta_vigente((int) $tcParametro);
+        case 'esta-relacionado':
+            return $toDao->esta_relacionado((int) $tcParametro);
+        case 'contar':
+            return $toDao->contar($tcParametro);
+        case 'obtener-nuevo-codigo':
+            return $toDao->obtener_nuevo_codigo();
+        case 'obtener-por-codigo':
+            return $toDao->obtener_por_codigo((int) $tcParametro);
+        case 'obtener-por-nombre':
+            return $toDao->obtener_por_nombre($tcParametro);
+        case 'obtener-todos':
+            return $toDao->obtener_todos($tcParametro, null);
+    }
+
+    return '';
+}
+
+#-------------------------------------------------------------------------------
+function obtener_valor_xml(
+    $toNodo,
+    $tcTipo = 'string',
+    $tcPredeterminado = ''
+) {
+    if (!isset($toNodo) || trim((string) $toNodo) === '') {
+        return $tcPredeterminado;
+    }
+
+    switch ($tcTipo) {
+        case 'int':
+            return (int) $toNodo;
+        case 'bool':
+            return strtolower((string) $toNodo) === 'true';
+        default:
+            return (string) $toNodo;
+    }
+}
+
+#-------------------------------------------------------------------------------
+function enviar_respuesta_http($tnCodigo, $tcContenido) {
+    header($_SERVER['SERVER_PROTOCOL'] .
+        obtener_nombre_estado_respuesta_http($tnCodigo), true, $tnCodigo);
+    echo $tcContenido;
+}
+
+#-------------------------------------------------------------------------------
+function metodo_permitido($tcVerbo, $tcMetodo) {
+    $laMetodosPorVerbo = array(
+        'GET' => array('existe-codigo', 'existe-nombre', 'esta-vigente',
+            'esta-relacionado', 'contar', 'obtener-nuevo-codigo',
+            'obtener-por-codigo', 'obtener-por-nombre', 'obtener-todos'),
+        'POST' => array('agregar'),
+        'PUT' => array('modificar'),
+        'DELETE' => array('borrar')
+    );
+
+    return isset($laMetodosPorVerbo[$tcVerbo])
+        && in_array($tcMetodo, $laMetodosPorVerbo[$tcVerbo], true);
 }

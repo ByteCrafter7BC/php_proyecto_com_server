@@ -19,60 +19,95 @@
 * <https://www.gnu.org/licenses/>.
 */
 
+include_once 'app\prog\constantes.inc.php';
+
+/**
+ * Enví­a respuesta HTTP con código y contenido.
+ *
+ * @param int $tnCodigo Código HTTP.
+ * @param string $tcContenido Contenido de la respuesta.
+ * @return void
+ */
+function enviar_respuesta_http($tnCodigo, $tcContenido) {
+    header($_SERVER['SERVER_PROTOCOL'] .
+        obtener_nombre_estado_respuesta_http($tnCodigo), true, $tnCodigo);
+    echo $tcContenido;
+}
+
+#-------------------------------------------------------------------------------
 function es_cadena_json($tcJson) {
+    if (!is_string($tcJson) || trim($tcJson) === '') {
+        return false;
+    }
+
     json_decode($tcJson);
     return json_last_error() === JSON_ERROR_NONE;
 }
 
 #-------------------------------------------------------------------------------
 function es_cadena_xml($tcXml) {
-    $llValido = false;
-
-    libxml_use_internal_errors(true); // Suprime los errores.
-
-    if (simplexml_load_string($tcXml)) {
-        $llValido = true;
+    if (!is_string($tcXml) || trim($tcXml) === '') {
+        return false;
     }
 
-    libxml_clear_errors(); // Limpia los errores.
+    libxml_use_internal_errors(true);
+
+    $loXml = simplexml_load_string($tcXml);
+    $llValido = ($loXml !== false);
+
+    libxml_clear_errors();
+    libxml_use_internal_errors(false);
 
     return $llValido;
 }
 
 #-------------------------------------------------------------------------------
+function generar_error_xml($tcMensaje) {
+    return ENCABEZADO_XML . '<datos><error><mensaje>' . $tcMensaje .
+        '</mensaje></error></datos>';
+}
+
+#-------------------------------------------------------------------------------
 function obtener_nombre_estado_respuesta_http($tnCodRespHttp) {
-    if (gettype($tnCodRespHttp) !== 'integer') {
+    if (!is_int($tnCodRespHttp)) {
         return '';
     }
 
-    $lcCodRespHttp = '';
+    $laEstados = array(
+        200 => '200 OK',
+        201 => '201 Created',
+        202 => '202 Accepted',
+        400 => '400 Bad Request',
+        404 => '404 Not Found',
+        405 => '405 Method Not Allowed',
+        409 => '409 Conflict',
+        418 => "418 I'm a teapot"
+    );
 
-    switch ($tnCodRespHttp) {
-        case 200:
-            $lcCodRespHttp = ' 200 OK';
-            break;
-        case 201:
-            $lcCodRespHttp = ' 201 Created';
-            break;
-        case 202:
-            $lcCodRespHttp = ' 202 Accepted';
-            break;
-        case 400:
-            $lcCodRespHttp = ' 400 Bad Request';
-            break;
-        case 404:
-            $lcCodRespHttp = ' 404 Not Found';
-            break;
-        case 405:
-            $lcCodRespHttp = ' 405 Method Not Allowed';
-            break;
-        case 409:
-            $lcCodRespHttp = ' 409 Conflict';
-            break;
-        case 418:
-            $lcCodRespHttp = " 418 I'm a teapot";
-            break;
+    return isset($laEstados[$tnCodRespHttp]) ?
+        $laEstados[$tnCodRespHttp] : ' Unknown Status';
+}
+
+/**
+ * Obtiene valor de un nodo XML con tipo y valor predeterminado.
+ *
+ * @param mixed $toNodo Nodo XML.
+ * @param string $tcTipo Tipo de dato (string, int, bool).
+ * @param mixed $tcPredeterminado Valor predeterminado.
+ * @return mixed Valor convertido.
+ */
+function obtener_valor_xml($toNodo, $tcTipo = 'string', $tcPredeterminado = '')
+{
+    if (!isset($toNodo) || trim((string) $toNodo) === '') {
+        return $tcPredeterminado;
     }
 
-    return $lcCodRespHttp;
+    switch ($tcTipo) {
+        case 'int':
+            return (int) $toNodo;
+        case 'bool':
+            return strtolower((string) $toNodo) === 'true';
+        default:
+            return (string) $toNodo;
+    }
 }

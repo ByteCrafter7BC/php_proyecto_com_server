@@ -40,7 +40,7 @@ if ($laPartesRuta[0] == 'com_interop' && $laPartesRuta[1] == 'api') {
 
     switch ($lcModulo) {
         case 'marcas1':
-            $lcRutaElegida = 'app/controlador/marcas1_controlador.php';
+            $lcRutaElegida = 'app/controlador/controlador_marcas1.php';
             break;
     }
 }
