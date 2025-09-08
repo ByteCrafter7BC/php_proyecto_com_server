@@ -1,23 +1,23 @@
 <?php
 /**
-* controlador_base.inc.php
-*
-* Derechos de autor (C) 2000-2025 ByteCrafter7BC <bytecrafter7bc@gmail.com>
-*
-* Este programa es software libre: puede redistribuirlo y/o modificarlo
-* bajo los términos de la Licencia Pública General GNU publicada por
-* la Free Software Foundation, ya sea la versión 3 de la Licencia, o
-* (a su elección) cualquier versión posterior.
-*
-* Este programa se distribuye con la esperanza de que sea útil,
-* pero SIN NINGUNA GARANTÍA; sin siquiera la garantía implícita de
-* COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulte la
-* Licencia Pública General de GNU para obtener más detalles.
-*
-* Debería haber recibido una copia de la Licencia Pública General de GNU
-* junto con este programa. Si no es así, consulte
-* <https://www.gnu.org/licenses/>.
-*/
+ * controlador_base.inc.php
+ *
+ * Derechos de autor (C) 2000-2025 ByteCrafter7BC <bytecrafter7bc@gmail.com>
+ *
+ * Este programa es software libre: puede redistribuirlo y/o modificarlo
+ * bajo los términos de la Licencia Pública General GNU publicada por
+ * la Free Software Foundation, ya sea la versión 3 de la Licencia, o
+ * (a su elección) cualquier versión posterior.
+ *
+ * Este programa se distribuye con la esperanza de que sea útil,
+ * pero SIN NINGUNA GARANTÍA; sin siquiera la garantía implícita de
+ * COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulte la
+ * Licencia Pública General de GNU para obtener más detalles.
+ *
+ * Debería haber recibido una copia de la Licencia Pública General de GNU
+ * junto con este programa. Si no es así, consulte
+ * <https://www.gnu.org/licenses/>.
+ */
 
 include_once 'app\biblioteca\fabrica_dao.inc.php';
 include_once 'app\prog\funciones.inc.php';
@@ -93,7 +93,8 @@ class controlador_base {
 
         $laResultado = $this->procesar_solicitud();
 
-        if ($laResultado['contenido'] === ''
+        if (
+            $laResultado['contenido'] === ''
             && $laResultado['codigo'] === 200
         ) {
             $laResultado['codigo'] = 404;
@@ -113,7 +114,7 @@ class controlador_base {
      * @return bool True si es válido.
      */
     protected function tcModulo_Valid() {
-        return !empty($this->cModulo) && is_string($this->cModulo);
+        return is_string($this->cModulo) && trim($this->cModulo) !== '';
     }
 
     /**
@@ -129,7 +130,7 @@ class controlador_base {
             'obtener-por-codigo', 'obtener-por-nombre',
             'obtener-todos', 'agregar', 'modificar', 'borrar'
         );
-        return !empty($this->cMetodo) && is_string($this->cMetodo)
+        return is_string($this->cMetodo) && trim($this->cMetodo) !== ''
             && in_array($this->cMetodo, $laMetodosValidos, true);
     }
 
@@ -159,7 +160,7 @@ class controlador_base {
      * @return bool True si se obtuvo una instancia válida del DAO.
      */
     protected function obtener_dao() {
-        if (!is_string($this->tcModulo) || $this->tcModulo === '') {
+        if (!is_string($this->cModulo) || $this->cModulo === '') {
             // Módulo no definido o inválido.
             return false;
         }
@@ -171,21 +172,22 @@ class controlador_base {
             return false;
         }
 
-        $lcMetodo = 'obtener_dao_' . $this->tcModulo;
+        $lcMetodo = 'obtener_dao_' . $this->cModulo;
 
         if (!method_exists($loFabricaDao, $lcMetodo)) {
             // Método no disponible en la fábrica.
             return false;
         }
 
-        $oDao = $loFabricaDao->$lcMetodo();
+        $loDao = $loFabricaDao->$lcMetodo();
 
-        if (!is_object($oDao)) {
+        if (!is_object($loDao)) {
             // Instancia DAO inválida.
             return false;
         }
 
-        $this->oDao = $oDao;
+        $this->oDao = $loDao;
+
         return true;
     }
 
@@ -250,19 +252,22 @@ class controlador_base {
     }
 
     /**
-     * Procesa operación de guardar.
+     * Procesa la operación guardar.
      *
      * @param string $tcXml Datos XML recibidos.
      * @param int $tnBandera Operación a realizar (1 = agregar ó 2 = modificar).
      * @return array Resultado con código y contenido.
      */
     protected function guardar($tcXml, $tnBandera) {
-        if (empty($tcXml) || !es_cadena_xml($tcXml)) {
+        if (!es_cadena_xml($tcXml)) {
             return array('codigo' => 400, 'contenido' =>
                 generar_error_xml('XML inválido o no recibido.'));
         }
 
-        if (!is_integer($tnBandera) || !($tnBandera == 1 || $tnBandera == 2)) {
+        if (
+            !is_integer($tnBandera)
+            || !($tnBandera >= 1 && $tnBandera <= 2)
+        ) {
             return array('codigo' => 400, 'contenido' =>
                 generar_error_xml('Tipo de operación inválido o no recibido.'));
         }
@@ -288,7 +293,9 @@ class controlador_base {
             $loRegistro = $loXml->registro;
             $loDto = $this->oDao->obtener_dto();
 
-            if (!($loDto instanceof stdClass)) {
+            if (!is_object($loDto)) {
+                // La clase devuelta por get_class($loDto) es 'variant'.
+                // por ser un objeto COM.
                 return array('codigo' => 400, 'contenido' =>
                     generar_error_xml('Error al obtener el objeto DTO.'));
             }
@@ -319,13 +326,13 @@ class controlador_base {
     }
 
     /**
-     * Procesa operación de borrar.
+     * Procesa la operación borrar.
      *
      * @param string $tcXml Datos XML recibidos.
      * @return array Resultado con código y contenido.
      */
     protected function borrar($tcXml) {
-        if (empty($tcXml) || !es_cadena_xml($tcXml)) {
+        if (!es_cadena_xml($tcXml)) {
             return array('codigo' => 400, 'contenido' =>
                 generar_error_xml('XML inválido o no recibido.'));
         }

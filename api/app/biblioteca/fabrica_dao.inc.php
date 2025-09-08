@@ -1,23 +1,23 @@
 <?php
 /**
-* fabrica_dao.inc.php
-*
-* Derechos de autor (C) 2000-2025 ByteCrafter7BC <bytecrafter7bc@gmail.com>
-*
-* Este programa es software libre: puede redistribuirlo y/o modificarlo
-* bajo los términos de la Licencia Pública General GNU publicada por
-* la Free Software Foundation, ya sea la versión 3 de la Licencia, o
-* (a su elección) cualquier versión posterior.
-*
-* Este programa se distribuye con la esperanza de que sea útil,
-* pero SIN NINGUNA GARANTÍA; sin siquiera la garantía implícita de
-* COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulte la
-* Licencia Pública General de GNU para obtener más detalles.
-*
-* Debería haber recibido una copia de la Licencia Pública General de GNU
-* junto con este programa. Si no es así, consulte
-* <https://www.gnu.org/licenses/>.
-*/
+ * fabrica_dao.inc.php
+ *
+ * Derechos de autor (C) 2000-2025 ByteCrafter7BC <bytecrafter7bc@gmail.com>
+ *
+ * Este programa es software libre: puede redistribuirlo y/o modificarlo
+ * bajo los términos de la Licencia Pública General GNU publicada por
+ * la Free Software Foundation, ya sea la versión 3 de la Licencia, o
+ * (a su elección) cualquier versión posterior.
+ *
+ * Este programa se distribuye con la esperanza de que sea útil,
+ * pero SIN NINGUNA GARANTÍA; sin siquiera la garantía implícita de
+ * COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulte la
+ * Licencia Pública General de GNU para obtener más detalles.
+ *
+ * Debería haber recibido una copia de la Licencia Pública General de GNU
+ * junto con este programa. Si no es así, consulte
+ * <https://www.gnu.org/licenses/>.
+ */
 
 include_once 'app\biblioteca\fabrica_dao_com.inc.php';
 include_once 'app\prog\constantes.inc.php';
@@ -51,8 +51,10 @@ abstract class fabrica_dao {
             return false;
         }
 
-        if (gettype($tnCualFabrica) !== 'integer'
-                or !($tnCualFabrica >= 1 and $tnCualFabrica <= 4)) {
+        if (
+            !is_integer($tnCualFabrica)
+            || !($tnCualFabrica >= 1 && $tnCualFabrica <= 4)
+        ) {
             return false;
         }
         # fin { validaciones del parámetro }
@@ -74,7 +76,7 @@ abstract class fabrica_dao {
             break;
         }
 
-        if (gettype($lcFabricaDao) === 'string' and !empty($lcFabricaDao)) {
+        if (is_string($lcFabricaDao) && trim($lcFabricaDao) !== '') {
             try {
                 $loFabricaDao = new $lcFabricaDao;
             } catch (Exception $ex) {
